@@ -1,0 +1,9 @@
+{
+  "miniapp": {
+    "name": "Neon Tap Shooter",
+    "description": "Phaser mini app",
+    "iconUrl": "https://dummyimage.com/512x512/0b1020/ffffff.png&text=Icon",
+    "ogImageUrl": "https://dummyimage.com/1200x630/0b1020/ffffff.png&text=Neon+Tap+Shooter",
+    "websiteUrl": "https://example.com"
+  }
+}
