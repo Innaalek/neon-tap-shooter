@@ -5,7 +5,8 @@
     "iconUrl": "https://neon-tap-shooter.vercel.app/icon.png",
     "ogImageUrl": "https://neon-tap-shooter.vercel.app/og.png",
     "websiteUrl": "https://neon-tap-shooter.vercel.app",
-    "version": "1.0.0"
+    "homeUrl": "https://neon-tap-shooter.vercel.app",
+    "version": "1"
   },
   "accountAssociation": {
     "header": "eyJmaWQiOjI5NjQyMiwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDA0MkMxNUM5NjExZmU0QjIzNWVkODc1MTRiOTAwMjVDMjUwYWIxNjUifQ",
