@@ -22,21 +22,16 @@
   import Phaser from "https://esm.sh/phaser@3.70.0";
   import { sdk } from "https://esm.sh/@farcaster/miniapp-sdk";
 
-  // простой лог внизу экрана
-  const logBox = document.createElement("div");
-  logBox.style.cssText = "position:fixed;left:10px;right:10px;bottom:10px;padding:8px;border-radius:10px;background:#0b1020;color:#cfe0ff;font:12px/1.4 system-ui;opacity:.9";
-  document.body.appendChild(logBox);
-  const log = (m) => (logBox.textContent = "[MiniApp] " + m);
-
+  // Готовность SDK (без оверлея)
   try {
     if (typeof sdk?.actions?.ready === "function") {
       sdk.actions.ready();
-      log("SDK ready()");
+      console.log("[MiniApp] ready()");
     } else {
-      log("SDK not injected (not in Mini App preview?)");
+      console.log("[MiniApp] SDK not injected (not in preview?)");
     }
   } catch (e) {
-    log("ready() error: " + (e?.message || e));
+    console.log("[MiniApp] ready() error:", e);
   }
 
   class MainScene extends Phaser.Scene {
@@ -104,31 +99,28 @@
     window.__score = s;
   });
 
-  // кнопки
+  // Кнопки
   document.getElementById("sign").onclick = async () => {
     try {
-      log("auth.request()…");
       await sdk.auth.request();
       const u = await sdk.user.get();
-      log(u?.fid ? `Signed in: FID ${u.fid}` : "Not signed in");
       alert(u?.fid ? `Signed in. FID: ${u.fid}` : "Not signed in");
     } catch (e) {
-      log("Auth error: " + (e?.message || e));
       alert("Auth error: " + (e?.message || e));
+      console.log("Auth error:", e);
     }
   };
 
   document.getElementById("share").onclick = async () => {
     try {
       const score = window.__score ?? 0;
-      log("actions.composeCast()…");
       await sdk.actions.composeCast({
         text: `I scored ${score} in Neon Tap Shooter!`,
         url: location.origin
       });
     } catch (e) {
-      log("Share error: " + (e?.message || e));
       alert("Share error: " + (e?.message || e));
+      console.log("Share error:", e);
     }
   };
 </script>
