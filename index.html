@@ -18,99 +18,120 @@
     <button id="share" class="btn">Share</button>
   </div>
 
-  <script type="module">
-    import Phaser from "https://esm.sh/phaser@3.70.0";
-    import { sdk } from "https://esm.sh/@farcaster/miniapp-sdk";
+ <script type="module">
+  import Phaser from "https://esm.sh/phaser@3.70.0";
+  import { sdk } from "https://esm.sh/@farcaster/miniapp-sdk";
 
-    // ВАЖНО для превью в Farcaster
-    sdk.actions.ready();
+  // простой лог внизу экрана
+  const logBox = document.createElement("div");
+  logBox.style.cssText = "position:fixed;left:10px;right:10px;bottom:10px;padding:8px;border-radius:10px;background:#0b1020;color:#cfe0ff;font:12px/1.4 system-ui;opacity:.9";
+  document.body.appendChild(logBox);
+  const log = (m) => (logBox.textContent = "[MiniApp] " + m);
 
-    class MainScene extends Phaser.Scene {
-      constructor(){ super("main"); }
-      create() {
-        const w = 360, h = 640;
-        this.cameras.main.setBackgroundColor("#0b1020");
-        this.score = 0;
+  try {
+    if (typeof sdk?.actions?.ready === "function") {
+      sdk.actions.ready();
+      log("SDK ready()");
+    } else {
+      log("SDK not injected (not in Mini App preview?)");
+    }
+  } catch (e) {
+    log("ready() error: " + (e?.message || e));
+  }
 
-        // Игрок
-        const ship = this.add.rectangle(w/2, h-40, 26, 16, 0x3cf4ff).setStrokeStyle(2,0x2b8cff);
-        this.player = this.physics.add.existing(ship, false);
-        this.player.body.setCollideWorldBounds(true);
+  class MainScene extends Phaser.Scene {
+    constructor(){ super("main"); }
+    create() {
+      const w = 360, h = 640;
+      this.cameras.main.setBackgroundColor("#0b1020");
+      this.score = 0;
 
-        // Группы
-        this.bullets = this.physics.add.group();
-        this.enemies = this.physics.add.group();
+      const ship = this.add.rectangle(w/2, h-40, 26, 16, 0x3cf4ff).setStrokeStyle(2,0x2b8cff);
+      this.player = this.physics.add.existing(ship, false);
+      this.player.body.setCollideWorldBounds(true);
 
-        // Управление
-        this.cursors = this.input.keyboard.createCursorKeys();
-        this.input.on("pointerdown", () => this.fire());
+      this.bullets = this.physics.add.group();
+      this.enemies = this.physics.add.group();
 
-        // Спавн врагов
-        this.time.addEvent({
-          delay: 900, loop: true, callback: () => {
-            const x = Phaser.Math.Between(20, w-20);
-            const e = this.add.rectangle(x, -20, 18, 18, 0xff3366).setStrokeStyle(2,0xff6a8f);
-            const enemy = this.physics.add.existing(e, false);
-            enemy.body.setVelocityY(140);
-            this.enemies.add(enemy);
-          }
-        });
+      this.cursors = this.input.keyboard.createCursorKeys();
+      this.input.on("pointerdown", () => this.fire());
 
-        // Коллизии
-        this.physics.add.overlap(this.bullets, this.enemies, (b,e)=>{
-          b.destroy(); e.destroy(); this.score++;
-          this.events.emit("score:change", this.score);
-        });
+      this.time.addEvent({
+        delay: 900, loop: true, callback: () => {
+          const x = Phaser.Math.Between(20, w-20);
+          const e = this.add.rectangle(x, -20, 18, 18, 0xff3366).setStrokeStyle(2,0xff6a8f);
+          const enemy = this.physics.add.existing(e, false);
+          enemy.body.setVelocityY(140);
+          this.enemies.add(enemy);
+        }
+      });
 
-        // Текст
-        this.label = this.add.text(10,10,"Score: 0",{fontSize:"16px",color:"#9fb3ff"});
-      }
+      this.physics.add.overlap(this.bullets, this.enemies, (b,e)=>{
+        b.destroy(); e.destroy(); this.score++;
+        this.events.emit("score:change", this.score);
+      });
 
-      fire(){
-        const bRect = this.add.rectangle(this.player.x, this.player.y-14, 4, 10, 0x66ccff);
-        const b = this.physics.add.existing(bRect, false);
-        b.body.setVelocityY(-360);
-        this.bullets.add(b);
-      }
-
-      update(){
-        if (this.cursors.left?.isDown) this.player.body.setVelocityX(-220);
-        else if (this.cursors.right?.isDown) this.player.body.setVelocityX(220);
-        else this.player.body.setVelocityX(0);
-      }
+      this.label = this.add.text(10,10,"Score: 0",{fontSize:"16px",color:"#9fb3ff"});
     }
 
-    const game = new Phaser.Game({
-      type: Phaser.AUTO,
-      width: 360,
-      height: 640,
-      parent: "game",
-      backgroundColor: "#0b1020",
-      physics: { default: "arcade", arcade: { debug:false }},
-      scene: [MainScene],
-    });
+    fire(){
+      const bRect = this.add.rectangle(this.player.x, this.player.y-14, 4, 10, 0x66ccff);
+      const b = this.physics.add.existing(bRect, false);
+      b.body.setVelocityY(-360);
+      this.bullets.add(b);
+    }
 
-    // UI: счёт, вход, шаринг
-    game.events?.on?.("ready", ()=>{ /* noop */});
-    const scene = () => game.scene.getScene("main");
+    update(){
+      if (this.cursors.left?.isDown) this.player.body.setVelocityX(-220);
+      else if (this.cursors.right?.isDown) this.player.body.setVelocityX(220);
+      else this.player.body.setVelocityX(0);
+    }
+  }
 
-    scene().events.on("score:change", (s)=> {
-      scene().label.setText("Score: " + s);
-      window.__score = s;
-    });
+  const game = new Phaser.Game({
+    type: Phaser.AUTO,
+    width: 360,
+    height: 640,
+    parent: "game",
+    backgroundColor: "#0b1020",
+    physics: { default: "arcade", arcade: { debug:false }},
+    scene: [MainScene],
+  });
 
-    document.getElementById("sign").onclick = async () => {
+  const scene = () => game.scene.getScene("main");
+  scene().events.on("score:change", (s)=> {
+    scene().label.setText("Score: " + s);
+    window.__score = s;
+  });
+
+  // кнопки
+  document.getElementById("sign").onclick = async () => {
+    try {
+      log("auth.request()…");
       await sdk.auth.request();
       const u = await sdk.user.get();
-      alert("FID: " + (u?.fid ?? "not signed in"));
-    };
-    document.getElementById("share").onclick = async () => {
+      log(u?.fid ? `Signed in: FID ${u.fid}` : "Not signed in");
+      alert(u?.fid ? `Signed in. FID: ${u.fid}` : "Not signed in");
+    } catch (e) {
+      log("Auth error: " + (e?.message || e));
+      alert("Auth error: " + (e?.message || e));
+    }
+  };
+
+  document.getElementById("share").onclick = async () => {
+    try {
       const score = window.__score ?? 0;
+      log("actions.composeCast()…");
       await sdk.actions.composeCast({
         text: `I scored ${score} in Neon Tap Shooter!`,
         url: location.origin
       });
-    };
-  </script>
+    } catch (e) {
+      log("Share error: " + (e?.message || e));
+      alert("Share error: " + (e?.message || e));
+    }
+  };
+</script>
+
 </body>
 </html>
