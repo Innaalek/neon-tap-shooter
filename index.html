@@ -9,43 +9,44 @@
   #game{display:grid;place-items:center;height:100vh}
 
   /* Кнопки НА ВЕРХУ и поверх всего */
-  .ui{
+  /* панель с кнопками — внизу, поверх всего */
+.ui{
   position: fixed;
-  left: 0; right: 0; 
-  top: 80px;                 /* было 12px — опускаем ниже шапки превью */
-  display: flex; 
-  justify-content: center; 
-  gap: 8px;
-  z-index: 2147483647 !important;
-  pointer-events: auto !important;
+  left: 0; right: 0; bottom: 12px;   /* тут bottom, не top */
+  display: flex; justify-content: center; gap: 8px;
+  z-index: 2147483647;
+  pointer-events: auto;
 }
 
-  .btn{
-    padding: 8px 14px;
-    border-radius: 10px;
-    border: 1px solid #2b3255;
-    background: #10162a;
-    color: #d6e0ff;
-    cursor: pointer;
-    position: relative;
-    z-index: 2147483647;
-    pointer-events: auto;
-  }
-  canvas{
-    position: relative;
-    z-index: 1;
-    /* Временно: отключаем клики у канваса, чтобы они точно доходили до кнопок */
-    pointer-events: none;
-  }
+/* сами кнопки — без изменений (можно как у тебя) */
+.btn{
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid #2b3255;
+  background: #10162a;
+  color: #d6e0ff;
+  cursor: pointer;
+  position: relative;
+  z-index: 10001;
+  pointer-events: auto;
+}
+
+/* канвас снова принимает клики, чтобы игра работала */
+canvas{
+  position: relative;
+  z-index: 1;
+  pointer-events: auto; /* важно включить */
+}
+
 </style>
 
 </head>
 <body>
   <div id="game"></div>
 
-  <div class="ui">
+ <div class="ui">
   <button id="sign" class="btn"
-          onclick="this.textContent='Clicked'; window.handleSign && window.handleSign(event)">
+          onclick="window.handleSign && window.handleSign(event)">
     Sign in
   </button>
   <button id="share" class="btn"
@@ -53,6 +54,7 @@
     Share
   </button>
 </div>
+
 
 
   <!-- Скрипт СТАВИМ В КОНЕЦ, ПЕРЕД </body> -->
