@@ -5,64 +5,64 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Neon Tap Shooter</title>
   <style>
-  html,body{margin:0;height:100%;background:#05070c;color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
-  #game{display:grid;place-items:center;height:100vh}
+    html,body{margin:0;height:100%;background:#05070c;color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
+    #game{display:grid;place-items:center;height:100vh}
 
-  /* Кнопки НА ВЕРХУ и поверх всего */
-  /* панель с кнопками — внизу, поверх всего */
-.ui{
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%); /* по центру экрана */
-  display: flex;
-  gap: 10px;
-  padding: 10px 12px;              /* область побольше, удобнее клик */
-  background: rgba(0,0,0,0.35);     /* легкий фон для наглядности */
-  border-radius: 12px;
-  z-index: 2147483647 !important;   /* поверх всего */
-  pointer-events: auto !important;
-}
+    /* Панель кнопок (по центру для стабильного клика в превью) */
+    .ui{
+      position: fixed;
+      left: 50%;
+      top: 56px;                      /* сверху безопаснее в Preview Tool */
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,0.35);
+      border-radius: 12px;
+      z-index: 2147483647 !important;
+      pointer-events: auto !important;
+    }
+    .btn{
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid #2b3255;
+      background: #10162a;
+      color: #d6e0ff;
+      cursor: pointer;
+      position: relative;
+      z-index: 10001;
+      pointer-events: auto;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
 
-/* сами кнопки — без изменений (можно как у тебя) */
-.btn{
-  padding: 8px 14px;
-  border-radius: 10px;
-  border: 1px solid #2b3255;
-  background: #10162a;
-  color: #d6e0ff;
-  cursor: pointer;
-  position: relative;
-  z-index: 10001;
-  pointer-events: auto;
-}
+    /* Игра кликабельна */
+    canvas{
+      position: relative;
+      z-index: 1;
+      pointer-events: auto;
+    }
 
-/* канвас снова принимает клики, чтобы игра работала */
-canvas{
-  position: relative;
-  z-index: 1;
-  pointer-events: auto; /* важно включить */
-}
-html,body,#game,.ui,.btn,canvas { pointer-events: auto !important; }
-
-</style>
-
+    /* Принудительно разрешаем клики на ключевых слоях */
+    html,body,#game,.ui,.btn,canvas { pointer-events: auto !important; }
+  </style>
 </head>
 <body>
   <div id="game"></div>
 
-<div class="ui">
-  <button id="sign" class="btn">Sign in</button>
-  <button id="share" class="btn">Share</button>
-</div>
+  <!-- Панель UI -->
+  <div id="miniui" class="ui">
+    <button id="sign"  class="btn">Sign in</button>
+    <button id="share" class="btn">Share</button>
+  </div>
 
-
-  <!-- Скрипт СТАВИМ В КОНЕЦ, ПЕРЕД </body> -->
+  <!-- Скрипт СТАВИМ В КОНЕЦ -->
   <script type="module">
     import Phaser from "https://esm.sh/phaser@3.70.0";
     import { sdk } from "https://esm.sh/@farcaster/miniapp-sdk";
 
-    // Готовность SDK (не показывает никаких оверлеев)
+    // Сообщаем SDK, что готовы (важно для превью мини-апп)
     try { if (typeof sdk?.actions?.ready === "function") sdk.actions.ready(); } catch {}
 
     class MainScene extends Phaser.Scene {
@@ -72,16 +72,20 @@ html,body,#game,.ui,.btn,canvas { pointer-events: auto !important; }
         this.cameras.main.setBackgroundColor("#0b1020");
         this.score = 0;
 
+        // Игрок
         const ship = this.add.rectangle(w/2, h-40, 26, 16, 0x3cf4ff).setStrokeStyle(2,0x2b8cff);
         this.player = this.physics.add.existing(ship, false);
         this.player.body.setCollideWorldBounds(true);
 
+        // Группы
         this.bullets = this.physics.add.group();
         this.enemies = this.physics.add.group();
 
+        // Управление
         this.cursors = this.input.keyboard.createCursorKeys();
         this.input.on("pointerdown", () => this.fire());
 
+        // Спавн врагов
         this.time.addEvent({
           delay: 900, loop: true, callback: () => {
             const x = Phaser.Math.Between(20, w-20);
@@ -92,11 +96,13 @@ html,body,#game,.ui,.btn,canvas { pointer-events: auto !important; }
           }
         });
 
+        // Коллизии
         this.physics.add.overlap(this.bullets, this.enemies, (b,e)=>{
           b.destroy(); e.destroy(); this.score++;
           this.events.emit("score:change", this.score);
         });
 
+        // Текст
         this.label = this.add.text(10,10,"Score: 0",{fontSize:"16px",color:"#9fb3ff"});
       }
 
@@ -130,69 +136,95 @@ html,body,#game,.ui,.btn,canvas { pointer-events: auto !important; }
       window.__score = s;
     });
 
-   
+    // === Глобальные обработчики ===
+    window.handleSign = async (ev) => {
+      try {
+        ev?.stopPropagation?.();
+        const btn = document.getElementById("sign");
+        if (btn) btn.textContent = "Signing…";
+        console.log("[MiniApp] Sign clicked");
 
-// === ГЛОБАЛЬНЫЕ ОБРАБОТЧИКИ КНОПОК ===
-window.handleSign = async (ev) => {
-  try {
-    ev && ev.stopPropagation && ev.stopPropagation();
-    const btn = document.getElementById("sign");
-    if (btn) btn.textContent = "Signing…";   // заметное визуальное изменение
-    console.log("[MiniApp] Sign clicked");
-    // Если SDK доступен – пойдёт авторизация:
-    if (sdk?.auth?.request) {
-      await sdk.auth.request();
-      const u = await sdk.user.get();
-      if (btn) btn.textContent = u?.fid ? `FID: ${u.fid}` : "Not signed in";
+        if (sdk?.auth?.request) {
+          await sdk.auth.request();
+          const u = await sdk.user.get();
+          if (btn) btn.textContent = u?.fid ? `FID: ${u.fid}` : "Not signed in";
+        } else {
+          if (btn) btn.textContent = "SDK not available";
+        }
+      } catch (e) {
+        console.log("Auth error:", e);
+        const btn = document.getElementById("sign");
+        if (btn) btn.textContent = "Auth error";
+      }
+    };
+
+    window.handleShare = async (ev) => {
+      try {
+        ev?.stopPropagation?.();
+        const btn = document.getElementById("share");
+        if (btn) btn.textContent = "Opening…";
+
+        if (!sdk?.actions?.composeCast) {
+          if (btn) btn.textContent = "SDK not available";
+          return;
+        }
+        const score = window.__score ?? 0;
+        await sdk.actions.composeCast({
+          text: `I scored ${score} in Neon Tap Shooter!`,
+          url: location.origin
+        });
+        if (btn) { btn.textContent = "Shared!"; setTimeout(()=>btn.textContent="Share", 1200); }
+      } catch (e) {
+        console.log("Share error:", e);
+        const btn = document.getElementById("share");
+        if (btn) { btn.textContent = "Share error"; setTimeout(()=>btn.textContent="Share", 1500); }
+      }
+    };
+
+    // ======== Жёсткая привязка UI (без inline, для CSP/iframe) ========
+    function hardBindUI() {
+      try {
+        const ui = document.getElementById('miniui');
+        const signBtn  = document.getElementById('sign');
+        const shareBtn = document.getElementById('share');
+        if (!ui || !signBtn || !shareBtn) return;
+
+        // Продавим поверх всего и разрешим клики
+        Object.assign(ui.style, {
+          position: 'fixed',
+          left: '50%',
+          top: '56px',
+          transform: 'translateX(-50%)',
+          zIndex: '2147483647',
+          pointerEvents: 'auto',
+        });
+        [signBtn, shareBtn, document.body, document.documentElement].forEach(el=>{
+          if (!el) return;
+          el.style.pointerEvents = 'auto';
+        });
+
+        const bind = (el, handler) => {
+          if (el.__hardBound) return;
+          el.__hardBound = true;
+          ['pointerdown','click','touchstart'].forEach(ev =>
+            el.addEventListener(ev, e => { e.stopPropagation(); handler(e); }, {passive:true})
+          );
+        };
+        bind(signBtn,  (e)=> window.handleSign(e));
+        bind(shareBtn, (e)=> window.handleShare(e));
+
+        console.log("[MiniApp] UI bound");
+      } catch (e) {
+        console.log('hardBindUI error:', e);
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', hardBindUI);
     } else {
-      if (btn) btn.textContent = "SDK not available";
+      hardBindUI();
     }
-  } catch (e) {
-    console.log("Auth error:", e);
-    const btn = document.getElementById("sign");
-    if (btn) btn.textContent = "Auth error";
-  }
-};
-
-
-window.handleShare = async (ev) => {
-  try {
-    ev && ev.stopPropagation && ev.stopPropagation();
-    if (!sdk?.actions?.composeCast) {
-      throw new Error("Mini App SDK недоступен (вы не в Farcaster Preview/мини-апке)");
-    }
-    const score = window.__score ?? 0;
-    await sdk.actions.composeCast({
-      text: `I scored ${score} in Neon Tap Shooter!`,
-      url: location.origin
-    });
-  } catch (e) {
-    alert("Share не сработал здесь: " + (e?.message || e));
-    console.log("Share error:", e);
-  }
-};
-// --- Привязка кликов без inline (совместимо с CSP) ---
-function bindButtons() {
-  const signBtn  = document.getElementById('sign');
-  const shareBtn = document.getElementById('share');
-  if (!signBtn || !shareBtn) return;
-
-  if (!signBtn.__bound) {
-    signBtn.__bound = true;
-    signBtn.addEventListener('click', (ev) => window.handleSign(ev));
-  }
-  if (!shareBtn.__bound) {
-    shareBtn.__bound = true;
-    shareBtn.addEventListener('click', (ev) => window.handleShare(ev));
-  }
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', bindButtons);
-} else {
-  bindButtons();
-}
-
+    // ======== END hardBindUI ========
   </script>
 </body>
 </html>
+
