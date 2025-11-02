@@ -10,12 +10,16 @@
 
   /* Кнопки НА ВЕРХУ и поверх всего */
   .ui{
-    position: fixed;
-    left: 0; right: 0; top: 12px;
-    display: flex; justify-content: center; gap: 8px;
-    z-index: 2147483647;
-    pointer-events: auto;
-  }
+  position: fixed;
+  left: 0; right: 0; 
+  top: 80px;                 /* было 12px — опускаем ниже шапки превью */
+  display: flex; 
+  justify-content: center; 
+  gap: 8px;
+  z-index: 2147483647 !important;
+  pointer-events: auto !important;
+}
+
   .btn{
     padding: 8px 14px;
     border-radius: 10px;
