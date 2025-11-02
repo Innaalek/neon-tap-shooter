@@ -178,6 +178,33 @@ if (document.readyState === "loading") {
 } else {
   bindUI();
 }
+// === ГЛОБАЛЬНЫЕ ОБРАБОТЧИКИ ДЛЯ КНОПОК ===
+window.handleSign = async (ev) => {
+  try {
+    ev && ev.stopPropagation && ev.stopPropagation();
+    await sdk.auth.request();
+    const u = await sdk.user.get();
+    alert(u?.fid ? `Signed in. FID: ${u.fid}` : "Not signed in");
+  } catch (e) {
+    alert("Auth error: " + (e?.message || e));
+    console.log("Auth error:", e);
+  }
+};
+
+window.handleShare = async (ev) => {
+  try {
+    ev && ev.stopPropagation && ev.stopPropagation();
+    const score = window.__score ?? 0;
+    await sdk.actions.composeCast({
+      text: `I scored ${score} in Neon Tap Shooter!`,
+      url: location.origin
+    });
+  } catch (e) {
+    alert("Share error: " + (e?.message || e));
+    console.log("Share error:", e);
+  }
+};
+// === КОНЕЦ БЛОКА ===
 
   </script>
 </body>
