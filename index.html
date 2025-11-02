@@ -12,11 +12,19 @@
   /* панель с кнопками — внизу, поверх всего */
 .ui{
   position: fixed;
-  left: 0; right: 0; bottom: 12px;   /* тут bottom, не top */
-  display: flex; justify-content: center; gap: 8px;
-  z-index: 2147483647;
-  pointer-events: auto;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%); /* по центру экрана */
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;              /* область побольше, удобнее клик */
+  background: rgba(0,0,0,0.35);     /* легкий фон для наглядности */
+  border-radius: 12px;
+  z-index: 2147483647 !important;   /* поверх всего */
+  pointer-events: auto !important;
 }
+
+
 
 /* сами кнопки — без изменений (можно как у тебя) */
 .btn{
