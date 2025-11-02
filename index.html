@@ -131,83 +131,8 @@ canvas{
       window.__score = s;
     });
 
-    // --- НАВЕШИВАНИЕ ОБРАБОТЧИКОВ НА КНОПКИ ---
-function bindUI() {
-  const signBtn  = document.getElementById("sign");
-  const shareBtn = document.getElementById("share");
+   
 
-  if (!signBtn || !shareBtn) {
-    console.log("UI buttons not found yet");
-    return;
-  }
-
-  if (!signBtn.__bound) {
-    signBtn.__bound = true;
-    signBtn.addEventListener("click", async (ev) => {
-      ev.stopPropagation();
-      alert("click"); // тест: должно всплыть
-      try {
-        await sdk.auth.request();
-        const u = await sdk.user.get();
-        alert(u?.fid ? `Signed in. FID: ${u.fid}` : "Not signed in");
-      } catch (e) {
-        alert("Auth error: " + (e?.message || e));
-        console.log("Auth error:", e);
-      }
-    });
-  }
-
-  if (!shareBtn.__bound) {
-    shareBtn.__bound = true;
-    shareBtn.addEventListener("click", async (ev) => {
-      ev.stopPropagation();
-      try {
-        const score = window.__score ?? 0;
-        await sdk.actions.composeCast({
-          text: `I scored ${score} in Neon Tap Shooter!`,
-          url: location.origin
-          });
-      } catch (e) {
-        alert("Share error: " + (e?.message || e));
-        console.log("Share error:", e);
-      }
-    });
-  }
-}
-
-// Привяжем обработчики независимо от стадии готовности DOM
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", bindUI);
-} else {
-  bindUI();
-}
-// === ГЛОБАЛЬНЫЕ ОБРАБОТЧИКИ ДЛЯ КНОПОК ===
-window.handleSign = async (ev) => {
-  try {
-    ev && ev.stopPropagation && ev.stopPropagation();
-    await sdk.auth.request();
-    const u = await sdk.user.get();
-    alert(u?.fid ? `Signed in. FID: ${u.fid}` : "Not signed in");
-  } catch (e) {
-    alert("Auth error: " + (e?.message || e));
-    console.log("Auth error:", e);
-  }
-};
-
-window.handleShare = async (ev) => {
-  try {
-    ev && ev.stopPropagation && ev.stopPropagation();
-    const score = window.__score ?? 0;
-    await sdk.actions.composeCast({
-      text: `I scored ${score} in Neon Tap Shooter!`,
-      url: location.origin
-    });
-  } catch (e) {
-    alert("Share error: " + (e?.message || e));
-    console.log("Share error:", e);
-  }
-};
-// === КОНЕЦ БЛОКА ===
 // === ГЛОБАЛЬНЫЕ ОБРАБОТЧИКИ КНОПОК ===
 window.handleSign = async (ev) => {
   try {
