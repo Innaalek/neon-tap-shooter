@@ -44,9 +44,16 @@
   <div id="game"></div>
 
   <div class="ui">
-    <button id="sign" class="btn">Sign in</button>
-    <button id="share" class="btn">Share</button>
-  </div>
+  <button id="sign" class="btn"
+          onclick="this.textContent='Clicked'; window.handleSign && window.handleSign(event)">
+    Sign in
+  </button>
+  <button id="share" class="btn"
+          onclick="window.handleShare && window.handleShare(event)">
+    Share
+  </button>
+</div>
+
 
   <!-- Скрипт СТАВИМ В КОНЕЦ, ПЕРЕД </body> -->
   <script type="module">
