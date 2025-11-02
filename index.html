@@ -51,15 +51,10 @@ canvas{
   <div id="game"></div>
 
 <div class="ui">
-  <button id="sign" class="btn"
-          onclick="alert('INLINE OK'); window.handleSign && window.handleSign(event)">
-    Sign in
-  </button>
-  <button id="share" class="btn"
-          onclick="alert('INLINE OK'); window.handleShare && window.handleShare(event)">
-    Share
-  </button>
+  <button id="sign" class="btn">Sign in</button>
+  <button id="share" class="btn">Share</button>
 </div>
+
 
   <!-- Скрипт СТАВИМ В КОНЕЦ, ПЕРЕД </body> -->
   <script type="module">
@@ -175,6 +170,27 @@ window.handleShare = async (ev) => {
     console.log("Share error:", e);
   }
 };
+// --- Привязка кликов без inline (совместимо с CSP) ---
+function bindButtons() {
+  const signBtn  = document.getElementById('sign');
+  const shareBtn = document.getElementById('share');
+  if (!signBtn || !shareBtn) return;
+
+  if (!signBtn.__bound) {
+    signBtn.__bound = true;
+    signBtn.addEventListener('click', (ev) => window.handleSign(ev));
+  }
+  if (!shareBtn.__bound) {
+    shareBtn.__bound = true;
+    shareBtn.addEventListener('click', (ev) => window.handleShare(ev));
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bindButtons);
+} else {
+  bindButtons();
+}
 
   </script>
 </body>
