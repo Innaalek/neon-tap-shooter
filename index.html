@@ -5,154 +5,150 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Neon Tap Shooter</title>
   <style>
-  html,body{margin:0;height:100%;background:#05070c;color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
-  #game{display:grid;place-items:center;height:100vh}
+    html,body{margin:0;height:100%;background:#05070c;color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
+    #game{display:grid;place-items:center;height:100vh}
 
-  /* КНОПКИ НАД КАНВАСОМ */
-  .ui{
-  position: fixed;
-  left: 0; right: 0; bottom: 12px;
-  display: flex; justify-content: center; gap: 8px;
-  z-index: 10000;
-  pointer-events: auto;
-}
-.btn{
-  padding: 8px 14px;
-  border-radius: 10px;
-  border: 1px solid #2b3255;
-  background: #10162a;
-  color: #d6e0ff;
-  cursor: pointer;
-  position: relative;
-  z-index: 10001;
-  pointer-events: auto;
-}
-canvas{
-  position: relative;
-  z-index: 1;
-  /* временно отключаем клики по канвасу,
-     чтобы убедиться, что кнопки работают */
-  pointer-events: none;
-}
-
-</style>
-
+    /* Кнопки поверх канваса */
+    .ui{
+      position: fixed;
+      left: 0; right: 0; bottom: 12px;
+      display: flex; justify-content: center; gap: 8px;
+      z-index: 10000;
+      pointer-events: auto;
+    }
+    .btn{
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid #2b3255;
+      background: #10162a;
+      color: #d6e0ff;
+      cursor: pointer;
+      position: relative;
+      z-index: 10001;
+      pointer-events: auto;
+    }
+    canvas{
+      position: relative;
+      z-index: 1;
+      /* Диагностика: отключаем клики у канваса,
+         чтобы кнопки точно ловили клик. Потом уберём. */
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body>
   <div id="game"></div>
+
   <div class="ui">
     <button id="sign" class="btn">Sign in</button>
     <button id="share" class="btn">Share</button>
   </div>
 
- <script type="module">
-  import Phaser from "https://esm.sh/phaser@3.70.0";
-  import { sdk } from "https://esm.sh/@farcaster/miniapp-sdk";
+  <!-- Скрипт СТАВИМ В КОНЕЦ, ПЕРЕД </body> -->
+  <script type="module">
+    import Phaser from "https://esm.sh/phaser@3.70.0";
+    import { sdk } from "https://esm.sh/@farcaster/miniapp-sdk";
 
-  // Готовность SDK (без оверлея)
-  try {
-    if (typeof sdk?.actions?.ready === "function") {
-      sdk.actions.ready();
-      console.log("[MiniApp] ready()");
-    } else {
-      console.log("[MiniApp] SDK not injected (not in preview?)");
+    // Готовность SDK (не показывает никаких оверлеев)
+    try { if (typeof sdk?.actions?.ready === "function") sdk.actions.ready(); } catch {}
+
+    class MainScene extends Phaser.Scene {
+      constructor(){ super("main"); }
+      create() {
+        const w = 360, h = 640;
+        this.cameras.main.setBackgroundColor("#0b1020");
+        this.score = 0;
+
+        const ship = this.add.rectangle(w/2, h-40, 26, 16, 0x3cf4ff).setStrokeStyle(2,0x2b8cff);
+        this.player = this.physics.add.existing(ship, false);
+        this.player.body.setCollideWorldBounds(true);
+
+        this.bullets = this.physics.add.group();
+        this.enemies = this.physics.add.group();
+
+        this.cursors = this.input.keyboard.createCursorKeys();
+        this.input.on("pointerdown", () => this.fire());
+
+        this.time.addEvent({
+          delay: 900, loop: true, callback: () => {
+            const x = Phaser.Math.Between(20, w-20);
+            const e = this.add.rectangle(x, -20, 18, 18, 0xff3366).setStrokeStyle(2,0xff6a8f);
+            const enemy = this.physics.add.existing(e, false);
+            enemy.body.setVelocityY(140);
+            this.enemies.add(enemy);
+          }
+        });
+
+        this.physics.add.overlap(this.bullets, this.enemies, (b,e)=>{
+          b.destroy(); e.destroy(); this.score++;
+          this.events.emit("score:change", this.score);
+        });
+
+        this.label = this.add.text(10,10,"Score: 0",{fontSize:"16px",color:"#9fb3ff"});
+      }
+
+      fire(){
+        const bRect = this.add.rectangle(this.player.x, this.player.y-14, 4, 10, 0x66ccff);
+        const b = this.physics.add.existing(bRect, false);
+        b.body.setVelocityY(-360);
+        this.bullets.add(b);
+      }
+
+      update(){
+        if (this.cursors.left?.isDown) this.player.body.setVelocityX(-220);
+        else if (this.cursors.right?.isDown) this.player.body.setVelocityX(220);
+        else this.player.body.setVelocityX(0);
+      }
     }
-  } catch (e) {
-    console.log("[MiniApp] ready() error:", e);
-  }
 
-  class MainScene extends Phaser.Scene {
-    constructor(){ super("main"); }
-    create() {
-      const w = 360, h = 640;
-      this.cameras.main.setBackgroundColor("#0b1020");
-      this.score = 0;
+    const game = new Phaser.Game({
+      type: Phaser.AUTO,
+      width: 360,
+      height: 640,
+      parent: "game",
+      backgroundColor: "#0b1020",
+      physics: { default: "arcade", arcade: { debug:false }},
+      scene: [MainScene],
+    });
 
-      const ship = this.add.rectangle(w/2, h-40, 26, 16, 0x3cf4ff).setStrokeStyle(2,0x2b8cff);
-      this.player = this.physics.add.existing(ship, false);
-      this.player.body.setCollideWorldBounds(true);
+    const scene = () => game.scene.getScene("main");
+    scene().events.on("score:change", (s)=> {
+      scene().label.setText("Score: " + s);
+      window.__score = s;
+    });
 
-      this.bullets = this.physics.add.group();
-      this.enemies = this.physics.add.group();
+    // Обработчики вешаем когда DOM готов
+    window.addEventListener("DOMContentLoaded", () => {
+      const signBtn  = document.getElementById("sign");
+      const shareBtn = document.getElementById("share");
 
-      this.cursors = this.input.keyboard.createCursorKeys();
-      this.input.on("pointerdown", () => this.fire());
-
-      this.time.addEvent({
-        delay: 900, loop: true, callback: () => {
-          const x = Phaser.Math.Between(20, w-20);
-          const e = this.add.rectangle(x, -20, 18, 18, 0xff3366).setStrokeStyle(2,0xff6a8f);
-          const enemy = this.physics.add.existing(e, false);
-          enemy.body.setVelocityY(140);
-          this.enemies.add(enemy);
+      signBtn.addEventListener("click", async (ev) => {
+        ev.stopPropagation();
+        alert("click"); // тест: должно всплыть
+        try {
+          await sdk.auth.request();
+          const u = await sdk.user.get();
+          alert(u?.fid ? `Signed in. FID: ${u.fid}` : "Not signed in");
+        } catch (e) {
+          alert("Auth error: " + (e?.message || e));
+          console.log("Auth error:", e);
         }
       });
 
-      this.physics.add.overlap(this.bullets, this.enemies, (b,e)=>{
-        b.destroy(); e.destroy(); this.score++;
-        this.events.emit("score:change", this.score);
+      shareBtn.addEventListener("click", async (ev) => {
+        ev.stopPropagation();
+        try {
+          const score = window.__score ?? 0;
+          await sdk.actions.composeCast({
+            text: `I scored ${score} in Neon Tap Shooter!`,
+            url: location.origin
+          });
+        } catch (e) {
+          alert("Share error: " + (e?.message || e));
+          console.log("Share error:", e);
+        }
       });
-
-      this.label = this.add.text(10,10,"Score: 0",{fontSize:"16px",color:"#9fb3ff"});
-    }
-
-    fire(){
-      const bRect = this.add.rectangle(this.player.x, this.player.y-14, 4, 10, 0x66ccff);
-      const b = this.physics.add.existing(bRect, false);
-      b.body.setVelocityY(-360);
-      this.bullets.add(b);
-    }
-
-    update(){
-      if (this.cursors.left?.isDown) this.player.body.setVelocityX(-220);
-      else if (this.cursors.right?.isDown) this.player.body.setVelocityX(220);
-      else this.player.body.setVelocityX(0);
-    }
-  }
-
-  const game = new Phaser.Game({
-    type: Phaser.AUTO,
-    width: 360,
-    height: 640,
-    parent: "game",
-    backgroundColor: "#0b1020",
-    physics: { default: "arcade", arcade: { debug:false }},
-    scene: [MainScene],
-  });
-
-  const scene = () => game.scene.getScene("main");
-  scene().events.on("score:change", (s)=> {
-    scene().label.setText("Score: " + s);
-    window.__score = s;
-  });
-
-  // Кнопки
-  document.getElementById("sign").onclick = async () => {
-  alert("click"); // ТЕСТ: увидишь всплывающее "click", значит кнопка точно кликается
-  try {
-    await sdk.auth.request();
-    const u = await sdk.user.get();
-    alert(u?.fid ? `Signed in. FID: ${u.fid}` : "Not signed in");
-  } catch (e) {
-    alert("Auth error: " + (e?.message || e));
-    console.log("Auth error:", e);
-  }
-};
-
-
-  document.getElementById("share").onclick = async () => {
-    try {
-      const score = window.__score ?? 0;
-      await sdk.actions.composeCast({
-        text: `I scored ${score} in Neon Tap Shooter!`,
-        url: location.origin
-      });
-    } catch (e) {
-      alert("Share error: " + (e?.message || e));
-      console.log("Share error:", e);
-    }
-  };
-</script>
-
+    });
+  </script>
 </body>
 </html>
