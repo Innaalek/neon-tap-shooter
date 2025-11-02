@@ -24,8 +24,6 @@
   pointer-events: auto !important;
 }
 
-
-
 /* сами кнопки — без изменений (можно как у тебя) */
 .btn{
   padding: 8px 14px;
@@ -142,18 +140,24 @@ canvas{
 window.handleSign = async (ev) => {
   try {
     ev && ev.stopPropagation && ev.stopPropagation();
-    alert("Sign-in handler вызван");           // видно и в браузере, и в превью
-    if (!sdk?.auth?.request) {
-      throw new Error("Mini App SDK недоступен (вы не в Farcaster Preview/мини-апке)");
+    const btn = document.getElementById("sign");
+    if (btn) btn.textContent = "Signing…";   // заметное визуальное изменение
+    console.log("[MiniApp] Sign clicked");
+    // Если SDK доступен – пойдёт авторизация:
+    if (sdk?.auth?.request) {
+      await sdk.auth.request();
+      const u = await sdk.user.get();
+      if (btn) btn.textContent = u?.fid ? `FID: ${u.fid}` : "Not signed in";
+    } else {
+      if (btn) btn.textContent = "SDK not available";
     }
-    await sdk.auth.request();
-    const u = await sdk.user.get();
-    alert(u?.fid ? `Signed in. FID: ${u.fid}` : "Not signed in");
   } catch (e) {
-    alert("Auth не сработал здесь: " + (e?.message || e));
     console.log("Auth error:", e);
+    const btn = document.getElementById("sign");
+    if (btn) btn.textContent = "Auth error";
   }
 };
+
 
 window.handleShare = async (ev) => {
   try {
