@@ -123,15 +123,17 @@
 
   // Кнопки
   document.getElementById("sign").onclick = async () => {
-    try {
-      await sdk.auth.request();
-      const u = await sdk.user.get();
-      alert(u?.fid ? `Signed in. FID: ${u.fid}` : "Not signed in");
-    } catch (e) {
-      alert("Auth error: " + (e?.message || e));
-      console.log("Auth error:", e);
-    }
-  };
+  alert("click"); // ТЕСТ: увидишь всплывающее "click", значит кнопка точно кликается
+  try {
+    await sdk.auth.request();
+    const u = await sdk.user.get();
+    alert(u?.fid ? `Signed in. FID: ${u.fid}` : "Not signed in");
+  } catch (e) {
+    alert("Auth error: " + (e?.message || e));
+    console.log("Auth error:", e);
+  }
+};
+
 
   document.getElementById("share").onclick = async () => {
     try {
