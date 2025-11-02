@@ -10,26 +10,31 @@
 
   /* КНОПКИ НАД КАНВАСОМ */
   .ui{
-    position: fixed;
-    left: 0; right: 0; bottom: 12px;
-    display: flex; justify-content: center; gap: 8px;
-    z-index: 10000;             /* поверх канваса */
-  }
-  .btn{
-    padding: 8px 14px;
-    border-radius: 10px;
-    border: 1px solid #2b3255;
-    background: #10162a;
-    color: #d6e0ff;
-    cursor: pointer;
-    position: relative;
-    z-index: 10001;             /* ещё выше, чтобы точно клики ловились */
-    pointer-events: auto;
-  }
-  canvas{
-    position: relative;
-    z-index: 1;                 /* канвас ниже кнопок */
-  }
+  position: fixed;
+  left: 0; right: 0; bottom: 12px;
+  display: flex; justify-content: center; gap: 8px;
+  z-index: 10000;
+  pointer-events: auto;
+}
+.btn{
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid #2b3255;
+  background: #10162a;
+  color: #d6e0ff;
+  cursor: pointer;
+  position: relative;
+  z-index: 10001;
+  pointer-events: auto;
+}
+canvas{
+  position: relative;
+  z-index: 1;
+  /* временно отключаем клики по канвасу,
+     чтобы убедиться, что кнопки работают */
+  pointer-events: none;
+}
+
 </style>
 
 </head>
