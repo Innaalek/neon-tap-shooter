@@ -44,7 +44,7 @@ canvas{
 <body>
   <div id="game"></div>
 
- <div class="ui">
+<div class="ui">
   <button id="sign" class="btn"
           onclick="window.handleSign && window.handleSign(event)">
     Sign in
@@ -54,6 +54,7 @@ canvas{
     Share
   </button>
 </div>
+
 
 
 
@@ -207,6 +208,39 @@ window.handleShare = async (ev) => {
   }
 };
 // === КОНЕЦ БЛОКА ===
+// === ГЛОБАЛЬНЫЕ ОБРАБОТЧИКИ КНОПОК ===
+window.handleSign = async (ev) => {
+  try {
+    ev && ev.stopPropagation && ev.stopPropagation();
+    alert("Sign-in handler вызван");           // видно и в браузере, и в превью
+    if (!sdk?.auth?.request) {
+      throw new Error("Mini App SDK недоступен (вы не в Farcaster Preview/мини-апке)");
+    }
+    await sdk.auth.request();
+    const u = await sdk.user.get();
+    alert(u?.fid ? `Signed in. FID: ${u.fid}` : "Not signed in");
+  } catch (e) {
+    alert("Auth не сработал здесь: " + (e?.message || e));
+    console.log("Auth error:", e);
+  }
+};
+
+window.handleShare = async (ev) => {
+  try {
+    ev && ev.stopPropagation && ev.stopPropagation();
+    if (!sdk?.actions?.composeCast) {
+      throw new Error("Mini App SDK недоступен (вы не в Farcaster Preview/мини-апке)");
+    }
+    const score = window.__score ?? 0;
+    await sdk.actions.composeCast({
+      text: `I scored ${score} in Neon Tap Shooter!`,
+      url: location.origin
+    });
+  } catch (e) {
+    alert("Share не сработал здесь: " + (e?.message || e));
+    console.log("Share error:", e);
+  }
+};
 
   </script>
 </body>
