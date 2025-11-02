@@ -1,230 +1,50 @@
 <!doctype html>
-<html>
-<head>
+<html><head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Neon Tap Shooter</title>
+  <title>MiniApp SDK smoke test</title>
   <style>
-    html,body{margin:0;height:100%;background:#05070c;color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
-    #game{display:grid;place-items:center;height:100vh}
-
-    /* Панель кнопок (по центру для стабильного клика в превью) */
-    .ui{
-      position: fixed;
-      left: 50%;
-      top: 56px;                      /* сверху безопаснее в Preview Tool */
-      transform: translateX(-50%);
-      display: flex;
-      gap: 10px;
-      padding: 10px 12px;
-      background: rgba(0,0,0,0.35);
-      border-radius: 12px;
-      z-index: 2147483647 !important;
-      pointer-events: auto !important;
-    }
-    .btn{
-      padding: 8px 14px;
-      border-radius: 10px;
-      border: 1px solid #2b3255;
-      background: #10162a;
-      color: #d6e0ff;
-      cursor: pointer;
-      position: relative;
-      z-index: 10001;
-      pointer-events: auto;
-      user-select: none;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-    }
-
-    /* Игра кликабельна */
-    canvas{
-      position: relative;
-      z-index: 1;
-      pointer-events: auto;
-    }
-
-    /* Принудительно разрешаем клики на ключевых слоях */
-    html,body,#game,.ui,.btn,canvas { pointer-events: auto !important; }
+    body{margin:0;display:grid;place-items:center;min-height:100vh;background:#0b1020;color:#e8eeff;font-family:system-ui}
+    .ui{display:flex;gap:12px}
+    button{padding:10px 16px;border:1px solid #2b3255;background:#10162a;color:#d6e0ff;border-radius:10px;cursor:pointer}
   </style>
-</head>
-<body>
-  <div id="game"></div>
-
-  <!-- Панель UI -->
-  <div id="miniui" class="ui">
-    <button id="sign"  class="btn">Sign in</button>
-    <button id="share" class="btn">Share</button>
+</head><body>
+  <div class="ui">
+    <button id="sign">Sign in</button>
+    <button id="share">Share</button>
   </div>
 
-  <!-- Скрипт СТАВИМ В КОНЕЦ -->
   <script type="module">
-    import Phaser from "https://esm.sh/phaser@3.70.0";
     import { sdk } from "https://esm.sh/@farcaster/miniapp-sdk";
+    try { sdk?.actions?.ready?.(); } catch {}
 
-    // Сообщаем SDK, что готовы (важно для превью мини-апп)
-    try { if (typeof sdk?.actions?.ready === "function") sdk.actions.ready(); } catch {}
+    const sign = document.getElementById('sign');
+    const share = document.getElementById('share');
 
-    class MainScene extends Phaser.Scene {
-      constructor(){ super("main"); }
-      create() {
-        const w = 360, h = 640;
-        this.cameras.main.setBackgroundColor("#0b1020");
-        this.score = 0;
-
-        // Игрок
-        const ship = this.add.rectangle(w/2, h-40, 26, 16, 0x3cf4ff).setStrokeStyle(2,0x2b8cff);
-        this.player = this.physics.add.existing(ship, false);
-        this.player.body.setCollideWorldBounds(true);
-
-        // Группы
-        this.bullets = this.physics.add.group();
-        this.enemies = this.physics.add.group();
-
-        // Управление
-        this.cursors = this.input.keyboard.createCursorKeys();
-        this.input.on("pointerdown", () => this.fire());
-
-        // Спавн врагов
-        this.time.addEvent({
-          delay: 900, loop: true, callback: () => {
-            const x = Phaser.Math.Between(20, w-20);
-            const e = this.add.rectangle(x, -20, 18, 18, 0xff3366).setStrokeStyle(2,0xff6a8f);
-            const enemy = this.physics.add.existing(e, false);
-            enemy.body.setVelocityY(140);
-            this.enemies.add(enemy);
-          }
-        });
-
-        // Коллизии
-        this.physics.add.overlap(this.bullets, this.enemies, (b,e)=>{
-          b.destroy(); e.destroy(); this.score++;
-          this.events.emit("score:change", this.score);
-        });
-
-        // Текст
-        this.label = this.add.text(10,10,"Score: 0",{fontSize:"16px",color:"#9fb3ff"});
+    sign.addEventListener('click', async () => {
+      sign.textContent = 'Signing…';
+      try {
+        if (!sdk?.auth?.request) { sign.textContent = 'SDK not available'; return; }
+        await sdk.auth.request();
+        const u = await sdk.user.get();
+        sign.textContent = u?.fid ? `FID: ${u.fid}` : 'Not signed';
+      } catch (e) {
+        sign.textContent = 'Auth error';
+        console.log(e);
       }
-
-      fire(){
-        const bRect = this.add.rectangle(this.player.x, this.player.y-14, 4, 10, 0x66ccff);
-        const b = this.physics.add.existing(bRect, false);
-        b.body.setVelocityY(-360);
-        this.bullets.add(b);
-      }
-
-      update(){
-        if (this.cursors.left?.isDown) this.player.body.setVelocityX(-220);
-        else if (this.cursors.right?.isDown) this.player.body.setVelocityX(220);
-        else this.player.body.setVelocityX(0);
-      }
-    }
-
-    const game = new Phaser.Game({
-      type: Phaser.AUTO,
-      width: 360,
-      height: 640,
-      parent: "game",
-      backgroundColor: "#0b1020",
-      physics: { default: "arcade", arcade: { debug:false }},
-      scene: [MainScene],
     });
 
-    const scene = () => game.scene.getScene("main");
-    scene().events.on("score:change", (s)=> {
-      scene().label.setText("Score: " + s);
-      window.__score = s;
+    share.addEventListener('click', async () => {
+      share.textContent = 'Opening…';
+      try {
+        if (!sdk?.actions?.composeCast) { share.textContent = 'SDK not available'; return; }
+        await sdk.actions.composeCast({ text: 'Hello from smoke test', url: location.origin });
+        share.textContent = 'Opened';
+        setTimeout(()=> share.textContent='Share', 1200);
+      } catch (e) {
+        share.textContent = 'Share error';
+        console.log(e);
+      }
     });
-
-    // === Глобальные обработчики ===
-    window.handleSign = async (ev) => {
-      try {
-        ev?.stopPropagation?.();
-        const btn = document.getElementById("sign");
-        if (btn) btn.textContent = "Signing…";
-        console.log("[MiniApp] Sign clicked");
-
-        if (sdk?.auth?.request) {
-          await sdk.auth.request();
-          const u = await sdk.user.get();
-          if (btn) btn.textContent = u?.fid ? `FID: ${u.fid}` : "Not signed in";
-        } else {
-          if (btn) btn.textContent = "SDK not available";
-        }
-      } catch (e) {
-        console.log("Auth error:", e);
-        const btn = document.getElementById("sign");
-        if (btn) btn.textContent = "Auth error";
-      }
-    };
-
-    window.handleShare = async (ev) => {
-      try {
-        ev?.stopPropagation?.();
-        const btn = document.getElementById("share");
-        if (btn) btn.textContent = "Opening…";
-
-        if (!sdk?.actions?.composeCast) {
-          if (btn) btn.textContent = "SDK not available";
-          return;
-        }
-        const score = window.__score ?? 0;
-        await sdk.actions.composeCast({
-          text: `I scored ${score} in Neon Tap Shooter!`,
-          url: location.origin
-        });
-        if (btn) { btn.textContent = "Shared!"; setTimeout(()=>btn.textContent="Share", 1200); }
-      } catch (e) {
-        console.log("Share error:", e);
-        const btn = document.getElementById("share");
-        if (btn) { btn.textContent = "Share error"; setTimeout(()=>btn.textContent="Share", 1500); }
-      }
-    };
-
-    // ======== Жёсткая привязка UI (без inline, для CSP/iframe) ========
-    function hardBindUI() {
-      try {
-        const ui = document.getElementById('miniui');
-        const signBtn  = document.getElementById('sign');
-        const shareBtn = document.getElementById('share');
-        if (!ui || !signBtn || !shareBtn) return;
-
-        // Продавим поверх всего и разрешим клики
-        Object.assign(ui.style, {
-          position: 'fixed',
-          left: '50%',
-          top: '56px',
-          transform: 'translateX(-50%)',
-          zIndex: '2147483647',
-          pointerEvents: 'auto',
-        });
-        [signBtn, shareBtn, document.body, document.documentElement].forEach(el=>{
-          if (!el) return;
-          el.style.pointerEvents = 'auto';
-        });
-
-        const bind = (el, handler) => {
-          if (el.__hardBound) return;
-          el.__hardBound = true;
-          ['pointerdown','click','touchstart'].forEach(ev =>
-            el.addEventListener(ev, e => { e.stopPropagation(); handler(e); }, {passive:true})
-          );
-        };
-        bind(signBtn,  (e)=> window.handleSign(e));
-        bind(shareBtn, (e)=> window.handleShare(e));
-
-        console.log("[MiniApp] UI bound");
-      } catch (e) {
-        console.log('hardBindUI error:', e);
-      }
-    }
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', hardBindUI);
-    } else {
-      hardBindUI();
-    }
-    // ======== END hardBindUI ========
   </script>
-</body>
-</html>
-
+</body></html>
