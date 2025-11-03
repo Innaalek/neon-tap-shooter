@@ -147,18 +147,20 @@
               });
             });
 
-            // спавн врагов
-            this.time.addEvent({
-              delay: 900,
-              loop: true,
-              callback: () => {
-                const x = Phaser.Math.Between(20, w-20);
-                const rect = this.add.rectangle(x, -20, 18, 18, 0xff3366).setStrokeStyle(2,0xff6a8f);
-                const enemy = this.physics.add.existing(rect, false);
-                enemy.body.setVelocityY(140);
-                this.enemies.add(enemy);
-              }
-            });
+            // спавн врагов — СРАЗУ в видимой зоне
+this.time.addEvent({
+  delay: 900,
+  loop: true,
+  callback: () => {
+    const x = Phaser.Math.Between(20, w - 20);
+    // ставим не выше экрана, а на высоте 60px
+    const rect = this.add.rectangle(x, 60, 26, 26, 0xff3366).setStrokeStyle(2, 0xff6a8f);
+    const enemy = this.physics.add.existing(rect, false);
+    enemy.body.setVelocityY(40);     // пусть медленно плывут вниз
+    this.enemies.add(enemy);
+  }
+});
+
 
             // коллизии
             this.physics.add.overlap(this.bullets, this.enemies, (b,e)=>{
