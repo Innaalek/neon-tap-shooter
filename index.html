@@ -3,76 +3,167 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>MiniApp SDK smoke test</title>
+  <title>Neon Tap Shooter</title>
   <style>
-    body{
+    html,body{
       margin:0;
+      height:100%;
+      background:#05070c;
+      color:#fff;
+      font-family:system-ui,Segoe UI,Roboto,Arial;
+    }
+    #game{
       display:grid;
       place-items:center;
-      min-height:100vh;
-      background:#0b1020;
-      color:#e8eeff;
-      font-family:system-ui;
+      height:100vh;
     }
-    .ui{display:flex;gap:12px}
-    button{
-      padding:10px 16px;
+    /* панель с кнопками — снизу, поверх канваса */
+    .ui{
+      position:fixed;
+      left:0;
+      right:0;
+      bottom:12px;
+      display:flex;
+      justify-content:center;
+      gap:8px;
+      z-index:9999;
+      pointer-events:auto;
+    }
+    .btn{
+      padding:8px 14px;
+      border-radius:10px;
       border:1px solid #2b3255;
       background:#10162a;
       color:#d6e0ff;
-      border-radius:10px;
       cursor:pointer;
+      pointer-events:auto;
+    }
+    canvas{
+      position:relative;
+      z-index:1;
+      pointer-events:auto;
     }
   </style>
 </head>
 <body>
+  <div id="game"></div>
   <div class="ui">
-    <button id="sign">Sign in</button>
-    <button id="share">Share</button>
+    <button id="sign" class="btn">Sign in</button>
+    <button id="share" class="btn">Share</button>
   </div>
 
   <script type="module">
+    import Phaser from "https://esm.sh/phaser@3.70.0";
     import { sdk } from "https://esm.sh/@farcaster/miniapp-sdk";
 
-    // говорим превью, что мы готовы
+    // говорим Farcaster "я готов"
     try { sdk?.actions?.ready?.(); } catch {}
 
-    const sign  = document.getElementById("sign");
-    const share = document.getElementById("share");
+    // ===== ИГРА =====
+    class MainScene extends Phaser.Scene {
+      constructor(){ super("main"); }
+      create() {
+        const w = 360, h = 640;
+        this.cameras.main.setBackgroundColor("#0b1020");
+        this.score = 0;
 
-    // ---- НОВЫЙ sign in ----
-    sign.addEventListener("click", async () => {
-      sign.textContent = "Signing…";
+        // игрок
+        const ship = this.add.rectangle(w/2, h-40, 26, 16, 0x3cf4ff).setStrokeStyle(2,0x2b8cff);
+        this.player = this.physics.add.existing(ship, false);
+        this.player.body.setCollideWorldBounds(true);
+
+        // группы
+        this.bullets = this.physics.add.group();
+        this.enemies = this.physics.add.group();
+
+        // управление
+        this.cursors = this.input.keyboard.createCursorKeys();
+        this.input.on("pointerdown", () => this.fire());
+
+        // спавн врагов
+        this.time.addEvent({
+          delay: 900, loop: true, callback: () => {
+            const x = Phaser.Math.Between(20, w-20);
+            const e = this.add.rectangle(x, -20, 18, 18, 0xff3366).setStrokeStyle(2,0xff6a8f);
+            const enemy = this.physics.add.existing(e, false);
+            enemy.body.setVelocityY(140);
+            this.enemies.add(enemy);
+          }
+        });
+
+        // коллизии
+        this.physics.add.overlap(this.bullets, this.enemies, (b,e)=>{
+          b.destroy(); e.destroy(); this.score++;
+          this.events.emit("score:change", this.score);
+        });
+
+        // текст
+        this.label = this.add.text(10,10,"Score: 0",{fontSize:"16px",color:"#9fb3ff"});
+      }
+
+      fire(){
+        const bRect = this.add.rectangle(this.player.x, this.player.y-14, 4, 10, 0x66ccff);
+        const b = this.physics.add.existing(bRect, false);
+        b.body.setVelocityY(-360);
+        this.bullets.add(b);
+      }
+
+      update(){
+        if (this.cursors.left?.isDown) this.player.body.setVelocityX(-220);
+        else if (this.cursors.right?.isDown) this.player.body.setVelocityX(220);
+        else this.player.body.setVelocityX(0);
+      }
+    }
+
+    const game = new Phaser.Game({
+      type: Phaser.AUTO,
+      width: 360,
+      height: 640,
+      parent: "game",
+      backgroundColor: "#0b1020",
+      physics: { default: "arcade", arcade: { debug:false }},
+      scene: [MainScene],
+    });
+
+    const scene = () => game.scene.getScene("main");
+    scene().events.on("score:change", (s)=> {
+      scene().label.setText("Score: " + s);
+      window.__score = s;
+    });
+
+    // ===== КНОПКИ =====
+    const signBtn  = document.getElementById("sign");
+    const shareBtn = document.getElementById("share");
+
+    // новый signIn
+    signBtn.addEventListener("click", async () => {
+      signBtn.textContent = "Signing…";
       try {
-        // новый способ
         const res = await sdk.actions.signIn({
           nonce: String(Date.now()),
           acceptAuthAddress: true
         });
-        sign.textContent = res?.fid ? `FID: ${res.fid}` : "Signed in";
+        // покажем, что зашёл
+        signBtn.textContent = res?.fid ? `FID: ${res.fid}` : "Signed in";
       } catch (e) {
         console.log("signIn error", e);
-        sign.textContent = "SDK not available";
+        signBtn.textContent = "SDK not available";
       }
     });
 
-    // share можно оставить старый
-    share.addEventListener("click", async () => {
-      share.textContent = "Opening…";
+    shareBtn.addEventListener("click", async () => {
+      shareBtn.textContent = "Opening…";
       try {
-        if (!sdk?.actions?.composeCast) {
-          share.textContent = "SDK not available";
-          return;
-        }
+        const score = window.__score ?? 0;
         await sdk.actions.composeCast({
-          text: "Hello from smoke test",
+          text: `I scored ${score} in Neon Tap Shooter!`,
           url: location.origin
         });
-        share.textContent = "Opened";
-        setTimeout(() => (share.textContent = "Share"), 1200);
+        shareBtn.textContent = "Shared";
+        setTimeout(()=> shareBtn.textContent = "Share", 1200);
       } catch (e) {
         console.log("share error", e);
-        share.textContent = "Share error";
+        shareBtn.textContent = "Share error";
       }
     });
   </script>
