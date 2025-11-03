@@ -17,12 +17,12 @@
       place-items:center;
       height:100vh;
     }
-    /* панель с кнопками — поверх игры */
+    /* панель с кнопками — сверху */
     .ui{
       position:fixed;
       left:0;
       right:0;
-      top:12px;                /* сверху, чтобы ничего не перекрывало */
+      top:12px;
       display:flex;
       justify-content:center;
       gap:8px;
@@ -48,28 +48,22 @@
 <body>
   <div id="game"></div>
 
-  <!-- КНОПКИ -->
   <div class="ui">
     <button id="sign" class="btn">Sign in</button>
     <button id="share" class="btn">Share</button>
   </div>
 
-  <!-- ОДИН СКРИПТ: сначала кнопки, потом игра -->
   <script type="module">
-    // 1. Подтягиваем SDK
     import { sdk } from "https://esm.sh/@farcaster/miniapp-sdk";
-
-    // обозначим, что мы готовы (для превью)
     try { sdk?.actions?.ready?.(); } catch {}
 
     const signBtn  = document.getElementById("sign");
     const shareBtn = document.getElementById("share");
 
-    // 2. Навешиваем обработчики СРАЗУ, без ожидания игры
+    // ----- КНОПКИ -----
     signBtn.addEventListener("click", async () => {
       signBtn.textContent = "Signing…";
       try {
-        // новый способ (приходит в свежем мини-апп окружении)
         if (sdk?.actions?.signIn) {
           const res = await sdk.actions.signIn({
             nonce: String(Date.now()),
@@ -78,17 +72,15 @@
           signBtn.textContent = res?.fid ? `FID: ${res.fid}` : "Signed in";
           return;
         }
-        // старый способ (вдруг окружение старое)
         if (sdk?.auth?.request) {
           await sdk.auth.request();
           const u = await sdk.user.get();
           signBtn.textContent = u?.fid ? `FID: ${u.fid}` : "Not signed";
           return;
         }
-        // вообще нет SDK → просто скажем об этом
         signBtn.textContent = "SDK not available";
       } catch (e) {
-        console.log("sign error", e);
+        console.log(e);
         signBtn.textContent = "Sign-in error";
       }
     });
@@ -108,12 +100,12 @@
         shareBtn.textContent = "Shared";
         setTimeout(() => shareBtn.textContent = "Share", 1200);
       } catch (e) {
-        console.log("share error", e);
+        console.log(e);
         shareBtn.textContent = "Share error";
       }
     });
 
-    // 3. ДОГРУЖАЕМ ИГРУ ОТДЕЛЬНО — чтобы кнопки уже работали
+    // ----- ИГРА -----
     (async () => {
       try {
         const PhaserMod = await import("https://esm.sh/phaser@3.70.0");
@@ -121,6 +113,7 @@
 
         class MainScene extends Phaser.Scene {
           constructor(){ super("main"); }
+
           create() {
             const w = 360, h = 640;
             this.cameras.main.setBackgroundColor("#0b1020");
@@ -135,16 +128,33 @@
             this.bullets = this.physics.add.group();
             this.enemies = this.physics.add.group();
 
-            // управление
+            // клавиатура (ноут)
             this.cursors = this.input.keyboard.createCursorKeys();
-            this.input.on("pointerdown", () => this.fire());
+
+            // тапы (телефон): левая половина — влево, правая — вправо, любой тап — выстрел
+            this.input.on("pointerdown", (pointer) => {
+              const half = this.scale.width / 2;
+              // стреляем
+              this.fire();
+              // и задаём «направление» на 0.5 секунды
+              if (pointer.x < half) {
+                this.player.body.setVelocityX(-220);
+              } else {
+                this.player.body.setVelocityX(220);
+              }
+              this.time.delayedCall(500, () => {
+                this.player.body.setVelocityX(0);
+              });
+            });
 
             // спавн врагов
             this.time.addEvent({
-              delay: 900, loop: true, callback: () => {
+              delay: 900,
+              loop: true,
+              callback: () => {
                 const x = Phaser.Math.Between(20, w-20);
-                const e = this.add.rectangle(x, -20, 18, 18, 0xff3366).setStrokeStyle(2,0xff6a8f);
-                const enemy = this.physics.add.existing(e, false);
+                const rect = this.add.rectangle(x, -20, 18, 18, 0xff3366).setStrokeStyle(2,0xff6a8f);
+                const enemy = this.physics.add.existing(rect, false);
                 enemy.body.setVelocityY(140);
                 this.enemies.add(enemy);
               }
@@ -152,7 +162,9 @@
 
             // коллизии
             this.physics.add.overlap(this.bullets, this.enemies, (b,e)=>{
-              b.destroy(); e.destroy(); this.score++;
+              b.destroy();
+              e.destroy();
+              this.score++;
               this.events.emit("score:change", this.score);
             });
 
@@ -168,9 +180,17 @@
           }
 
           update(){
-            if (this.cursors.left?.isDown) this.player.body.setVelocityX(-220);
-            else if (this.cursors.right?.isDown) this.player.body.setVelocityX(220);
-            else this.player.body.setVelocityX(0);
+            // клавиатура для ноута
+            if (this.cursors.left?.isDown) {
+              this.player.body.setVelocityX(-220);
+            } else if (this.cursors.right?.isDown) {
+              this.player.body.setVelocityX(220);
+            } else {
+              // если палец не жмёт — тормозим
+              if (!this.input.activePointer.isDown) {
+                this.player.body.setVelocityX(0);
+              }
+            }
           }
         }
 
@@ -184,6 +204,7 @@
           scene: [MainScene],
         });
 
+        // счёт — в окно, чтобы share мог взять
         const scene = () => game.scene.getScene("main");
         scene().events.on("score:change", (s)=> {
           scene().label.setText("Score: " + s);
@@ -191,7 +212,7 @@
         });
 
       } catch (e) {
-        console.log("Phaser failed, but UI works", e);
+        console.log("Phaser failed", e);
       }
     })();
   </script>
