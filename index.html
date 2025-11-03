@@ -1,14 +1,31 @@
 <!doctype html>
-<html><head>
+<html>
+<head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>MiniApp SDK smoke test</title>
   <style>
-    body{margin:0;display:grid;place-items:center;min-height:100vh;background:#0b1020;color:#e8eeff;font-family:system-ui}
+    body{
+      margin:0;
+      display:grid;
+      place-items:center;
+      min-height:100vh;
+      background:#0b1020;
+      color:#e8eeff;
+      font-family:system-ui;
+    }
     .ui{display:flex;gap:12px}
-    button{padding:10px 16px;border:1px solid #2b3255;background:#10162a;color:#d6e0ff;border-radius:10px;cursor:pointer}
+    button{
+      padding:10px 16px;
+      border:1px solid #2b3255;
+      background:#10162a;
+      color:#d6e0ff;
+      border-radius:10px;
+      cursor:pointer;
+    }
   </style>
-</head><body>
+</head>
+<body>
   <div class="ui">
     <button id="sign">Sign in</button>
     <button id="share">Share</button>
@@ -16,35 +33,48 @@
 
   <script type="module">
     import { sdk } from "https://esm.sh/@farcaster/miniapp-sdk";
+
+    // говорим превью, что мы готовы
     try { sdk?.actions?.ready?.(); } catch {}
 
-    const sign = document.getElementById('sign');
-    const share = document.getElementById('share');
+    const sign  = document.getElementById("sign");
+    const share = document.getElementById("share");
 
-    sign.addEventListener('click', async () => {
-      sign.textContent = 'Signing…';
+    // ---- НОВЫЙ sign in ----
+    sign.addEventListener("click", async () => {
+      sign.textContent = "Signing…";
       try {
-        if (!sdk?.auth?.request) { sign.textContent = 'SDK not available'; return; }
-        await sdk.auth.request();
-        const u = await sdk.user.get();
-        sign.textContent = u?.fid ? `FID: ${u.fid}` : 'Not signed';
+        // новый способ
+        const res = await sdk.actions.signIn({
+          nonce: String(Date.now()),
+          acceptAuthAddress: true
+        });
+        sign.textContent = res?.fid ? `FID: ${res.fid}` : "Signed in";
       } catch (e) {
-        sign.textContent = 'Auth error';
-        console.log(e);
+        console.log("signIn error", e);
+        sign.textContent = "SDK not available";
       }
     });
 
-    share.addEventListener('click', async () => {
-      share.textContent = 'Opening…';
+    // share можно оставить старый
+    share.addEventListener("click", async () => {
+      share.textContent = "Opening…";
       try {
-        if (!sdk?.actions?.composeCast) { share.textContent = 'SDK not available'; return; }
-        await sdk.actions.composeCast({ text: 'Hello from smoke test', url: location.origin });
-        share.textContent = 'Opened';
-        setTimeout(()=> share.textContent='Share', 1200);
+        if (!sdk?.actions?.composeCast) {
+          share.textContent = "SDK not available";
+          return;
+        }
+        await sdk.actions.composeCast({
+          text: "Hello from smoke test",
+          url: location.origin
+        });
+        share.textContent = "Opened";
+        setTimeout(() => (share.textContent = "Share"), 1200);
       } catch (e) {
-        share.textContent = 'Share error';
-        console.log(e);
+        console.log("share error", e);
+        share.textContent = "Share error";
       }
     });
   </script>
-</body></html>
+</body>
+</html>
