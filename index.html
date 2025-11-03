@@ -5,42 +5,56 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Neon Tap Shooter</title>
   <style>
-    html,body{
-      margin:0;
-      height:100%;
-      background:#05070c;
-      color:#fff;
-      font-family:system-ui,Segoe UI,Roboto,Arial;
+    :root {
+      --bg: #0b1020;
+      --panel: rgba(0,0,0,.35);
+      --btn: #10162a;
+      --btn-border: #2b3255;
+      --btn-text: #d6e0ff;
     }
-    #game{
-      display:grid;
-      place-items:center;
-      height:100vh;
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: #e8eeff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial;
     }
-    /* панель с кнопками – сверху, чтобы не мешали игре */
-    .ui{
-      position:fixed;
-      top:10px;
-      left:50%;
-      transform:translateX(-50%);
-      display:flex;
-      gap:10px;
-      z-index:2147483647;
-      pointer-events:auto;
+    #game {
+      height: 100vh;
+      display: grid;
+      place-items: center;
     }
-    .btn{
-      padding:6px 16px;
-      border-radius:10px;
-      border:1px solid #2b3255;
-      background:#10162a;
-      color:#d6e0ff;
-      cursor:pointer;
-      pointer-events:auto;
+    /* панель с кнопками сверху, по центру, поверх всего */
+    .ui {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      background: var(--panel);
+      padding: 6px 10px;
+      border-radius: 14px;
+      z-index: 2147483647;
+      pointer-events: auto;
     }
-    canvas{
-      position:relative;
-      z-index:1;
-      pointer-events:auto;
+    .btn {
+      background: var(--btn);
+      border: 1px solid var(--btn-border);
+      color: var(--btn-text);
+      border-radius: 10px;
+      padding: 6px 14px;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+    canvas {
+      position: relative;
+      z-index: 1;
+      pointer-events: auto;
+    }
+    /* на всякий случай — везде разрешаем клики */
+    html, body, #game, .ui, .btn, canvas {
+      pointer-events: auto !important;
     }
   </style>
 </head>
@@ -56,26 +70,22 @@
     import Phaser from "https://esm.sh/phaser@3.70.0";
     import { sdk } from "https://esm.sh/@farcaster/miniapp-sdk";
 
-    // сказать Farcaster'у, что мини-апка готова
+    // сообщаем Farcaster, что мини-апка готова
     try { sdk?.actions?.ready?.(); } catch {}
 
+    /* ====== PHASER ИГРА ====== */
     class MainScene extends Phaser.Scene {
-      constructor(){
+      constructor() {
         super("main");
       }
-      create(){
+      create() {
         const w = 360;
         const h = 640;
-        this.worldWidth = w;
-        this.worldHeight = h;
-
         this.cameras.main.setBackgroundColor("#0b1020");
         this.score = 0;
 
         // игрок
-        const ship = this.add.rectangle(w/2, h-50, 32, 18, 0x3cf4ff)
-          .setStrokeStyle(2, 0x2b8cff)
-          .setOrigin(0.5);
+        const ship = this.add.rectangle(w/2, h-40, 26, 16, 0x3cf4ff).setStrokeStyle(2, 0x2b8cff);
         this.player = this.physics.add.existing(ship, false);
         this.player.body.setCollideWorldBounds(true);
 
@@ -83,117 +93,89 @@
         this.bullets = this.physics.add.group();
         this.enemies = this.physics.add.group();
 
-        // текст счёта
-        this.scoreText = this.add.text(12, 48, "Score: 0", {
-          fontSize: "16px",
-          color: "#9fb3ff"
-        }).setDepth(100);
-
-        // управление
+        // управление: стрелки
         this.cursors = this.input.keyboard.createCursorKeys();
-        // тап/клик — стреляем
+
+        // стрельба по тапу
         this.input.on("pointerdown", () => this.fire());
 
-        // спавн падающих врагов
+        // спавн врагов
         this.time.addEvent({
-          delay: 900,
+          delay: 950,
           loop: true,
           callback: () => {
             const x = Phaser.Math.Between(20, w - 20);
-            // круглый враг
-            const enemyGfx = this.add.circle(x, -20, 14, 0xff3366)
-              .setStrokeStyle(2, 0xff6a8f);
-            const enemy = this.physics.add.existing(enemyGfx, false);
-            enemy.body.setVelocityY(110);   // падает вниз
-            enemy.body.setCircle(14);
-            this.enemies.add(enemyGfx);
+            const enemyRect = this.add.rectangle(x, -20, 20, 20, 0xff3366).setStrokeStyle(2, 0xff6a8f);
+            const enemy = this.physics.add.existing(enemyRect, false);
+            enemy.body.setVelocityY(120);
+            this.enemies.add(enemy);
           }
         });
 
-        // столкновения пуль и врагов
-        this.physics.add.overlap(this.bullets, this.enemies, (bullet, enemy) => {
-          bullet.destroy();
-          this.makeExplosion(enemy.x, enemy.y);
-          enemy.destroy();
+        // столкновения
+        this.physics.add.overlap(this.bullets, this.enemies, (b, e) => {
+          b.destroy();
+          e.destroy();
           this.score++;
-          this.updateScore();
+          this.events.emit("score:change", this.score);
         });
 
-        // если враг упал ниже — уничтожаем
-        this.time.addEvent({
-          delay: 500,
-          loop: true,
-          callback: () => {
-            this.enemies.getChildren().forEach(e => {
-              if (e.y > h + 40) e.destroy();
-            });
-          }
+        // счёт
+        this.scoreText = this.add.text(14, 12, "Score: 0", {
+          fontSize: "18px",
+          color: "#9fb3ff",
         });
       }
 
-      fire(){
-        // пуля из позиции игрока
-        const b = this.add.rectangle(this.player.x, this.player.y - 20, 4, 14, 0x66ccff);
-        const bullet = this.physics.add.existing(b, false);
-        bullet.body.setVelocityY(-360);
-        this.bullets.add(b);
+      fire() {
+        const bulletRect = this.add.rectangle(this.player.x, this.player.y - 16, 4, 10, 0x66ccff);
+        const bullet = this.physics.add.existing(bulletRect, false);
+        bullet.body.setVelocityY(-380);
+        this.bullets.add(bullet);
       }
 
-      makeExplosion(x, y){
-        const spark = this.add.circle(x, y, 18, 0xff9ab5).setAlpha(0.9);
-        this.tweens.add({
-          targets: spark,
-          alpha: 0,
-          scale: 0.2,
-          duration: 180,
-          onComplete: () => spark.destroy()
-        });
-      }
-
-      updateScore(){
-        this.scoreText.setText("Score: " + this.score);
-        // для Share
-        window.__score = this.score;
-      }
-
-      update(){
-        const speed = 220;
-        if (this.cursors.left?.isDown){
-          this.player.body.setVelocityX(-speed);
-        } else if (this.cursors.right?.isDown){
-          this.player.body.setVelocityX(speed);
+      update() {
+        if (this.cursors.left?.isDown) {
+          this.player.body.setVelocityX(-220);
+        } else if (this.cursors.right?.isDown) {
+          this.player.body.setVelocityX(220);
         } else {
           this.player.body.setVelocityX(0);
         }
       }
     }
 
-    // создаём игру
     const game = new Phaser.Game({
       type: Phaser.AUTO,
       width: 360,
       height: 640,
       parent: "game",
       backgroundColor: "#0b1020",
-      physics: {
-        default: "arcade",
-        arcade: { debug: false }
-      },
+      physics: { default: "arcade", arcade: { debug: false } },
       scene: [MainScene],
     });
 
-    // ==== кнопки Farcaster'а ====
+    // чтобы кнопка Share могла взять счёт
+    const scene = () => game.scene.getScene("main");
+    scene().events.on("score:change", (s) => {
+      scene().scoreText.setText("Score: " + s);
+      window.__score = s;
+    });
+
+    /* ====== КНОПКИ SDK ====== */
     const signBtn = document.getElementById("sign");
     const shareBtn = document.getElementById("share");
 
     signBtn.addEventListener("click", async (ev) => {
       ev.stopPropagation();
+      signBtn.textContent = "Signing…";
       try {
         if (!sdk?.auth?.request) {
+          // не в Farcaster
           signBtn.textContent = "SDK not available";
+          alert("Эта кнопка работает только внутри Farcaster (Preview / Mini App).");
           return;
         }
-        signBtn.textContent = "Signing…";
         await sdk.auth.request();
         const u = await sdk.user.get();
         signBtn.textContent = u?.fid ? "Signed in" : "Not signed";
@@ -205,16 +187,20 @@
 
     shareBtn.addEventListener("click", async (ev) => {
       ev.stopPropagation();
+      shareBtn.textContent = "Opening…";
       try {
         if (!sdk?.actions?.composeCast) {
           shareBtn.textContent = "SDK not available";
+          alert("Share тоже работает только внутри Farcaster.");
           return;
         }
-        const sc = window.__score ?? 0;
+        const score = window.__score ?? 0;
         await sdk.actions.composeCast({
-          text: `I scored ${sc} in Neon Tap Shooter!`,
-          url: location.origin
+          text: `I scored ${score} in Neon Tap Shooter!`,
+          url: location.origin,
         });
+        shareBtn.textContent = "Shared";
+        setTimeout(() => (shareBtn.textContent = "Share"), 1500);
       } catch (e) {
         console.log(e);
         shareBtn.textContent = "Share error";
