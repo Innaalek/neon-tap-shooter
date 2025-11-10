@@ -1,209 +1,163 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Neon Tap Shooter</title>
+  <title>Who are you on Farcaster today?</title>
   <style>
     :root {
-      --bg: #0b1020;
-      --panel: rgba(0,0,0,.35);
-      --btn: #10162a;
-      --btn-border: #2b3255;
-      --btn-text: #d6e0ff;
+      --bg: radial-gradient(circle at top, #0f172a 0%, #050816 65%, #000 100%);
+      --card: rgba(10,12,22,0.65);
+      --accent: #8b5cf6;
+      --text: #e2e8f0;
     }
-    html, body {
+    body {
       margin: 0;
-      height: 100%;
+      min-height: 100vh;
       background: var(--bg);
-      color: #e8eeff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial;
+      color: var(--text);
     }
-    #game {
-      height: 100vh;
-      display: grid;
-      place-items: center;
+    .app {
+      width: min(420px, 100%);
+      padding: 20px 16px 24px;
+      text-align: center;
     }
-    /* панель с кнопками сверху, по центру, поверх всего */
-    .ui {
-      position: fixed;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(139,92,246,0.25);
+      border-radius: 20px;
+      padding: 20px 18px 22px;
+      box-shadow: 0 20px 40px rgba(0,0,0,.35);
+      backdrop-filter: blur(12px);
+    }
+    h1 {
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+    .role {
+      margin: 14px auto 14px;
+      font-size: 22px;
+      font-weight: 600;
+      line-height: 1.3;
+      color: #fff;
+    }
+    .descr {
+      font-size: 13px;
+      opacity: .7;
+      margin-bottom: 16px;
+    }
+    .buttons {
       display: flex;
       gap: 10px;
-      background: var(--panel);
-      padding: 6px 10px;
-      border-radius: 14px;
-      z-index: 2147483647;
-      pointer-events: auto;
+      justify-content: center;
+      flex-wrap: wrap;
     }
-    .btn {
-      background: var(--btn);
-      border: 1px solid var(--btn-border);
-      color: var(--btn-text);
-      border-radius: 10px;
-      padding: 6px 14px;
+    button {
+      border: 1px solid rgba(226,232,240,.08);
+      background: rgba(15,23,42,.8);
+      color: #fff;
+      border-radius: 12px;
+      padding: 8px 14px;
       cursor: pointer;
-      pointer-events: auto;
+      font-weight: 500;
     }
-    canvas {
-      position: relative;
-      z-index: 1;
-      pointer-events: auto;
+    .primary {
+      background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+      border: none;
     }
-    /* на всякий случай — везде разрешаем клики */
-    html, body, #game, .ui, .btn, canvas {
-      pointer-events: auto !important;
+    small {
+      display: block;
+      margin-top: 14px;
+      font-size: 11.5px;
+      opacity: .35;
     }
   </style>
 </head>
 <body>
-  <div id="game"></div>
-
-  <div class="ui">
-    <button id="sign" class="btn">Sign in</button>
-    <button id="share" class="btn">Share</button>
+  <div class="app">
+    <div class="card">
+      <h1>Who are you on Farcaster today?</h1>
+      <div id="role" class="role">loading…</div>
+      <div class="descr">Tap “Another one” if you don’t like it 😎</div>
+      <div class="buttons">
+        <button id="another">Another one</button>
+        <button id="share" class="primary">Share to Farcaster</button>
+      </div>
+      <small>If you opened this outside Farcaster, sharing may not work.</small>
+    </div>
   </div>
 
   <script type="module">
-    import Phaser from "https://esm.sh/phaser@3.70.0";
     import { sdk } from "https://esm.sh/@farcaster/miniapp-sdk";
-
-    // сообщаем Farcaster, что мини-апка готова
+    // tell Farcaster preview we are ready
     try { sdk?.actions?.ready?.(); } catch {}
 
-    /* ====== PHASER ИГРА ====== */
-    class MainScene extends Phaser.Scene {
-      constructor() {
-        super("main");
-      }
-      create() {
-        const w = 360;
-        const h = 640;
-        this.cameras.main.setBackgroundColor("#0b1020");
-        this.score = 0;
+    const roles = [
+      "💜 Meme curator of the day",
+      "🟣 Farcaster explorer",
+      "🧬 Forever builder mode",
+      "🪄 Cast crafter",
+      "🛰 Mini app enjoyer",
+      "🎯 Replies that actually help",
+      "⚡ Hype booster",
+      "🌸 Community lore keeper",
+      "🧊 Calm moderator energy",
+      "📡 Hunter of underrated casts",
+      "🪐 Social graph enjoyer",
+      "🦫 Ship-it beaver",
+      "🤖 AI-first caster"
+    ];
 
-        // игрок
-        const ship = this.add.rectangle(w/2, h-40, 26, 16, 0x3cf4ff).setStrokeStyle(2, 0x2b8cff);
-        this.player = this.physics.add.existing(ship, false);
-        this.player.body.setCollideWorldBounds(true);
-
-        // группы
-        this.bullets = this.physics.add.group();
-        this.enemies = this.physics.add.group();
-
-        // управление: стрелки
-        this.cursors = this.input.keyboard.createCursorKeys();
-
-        // стрельба по тапу
-        this.input.on("pointerdown", () => this.fire());
-
-        // спавн врагов
-        this.time.addEvent({
-          delay: 950,
-          loop: true,
-          callback: () => {
-            const x = Phaser.Math.Between(20, w - 20);
-            const enemyRect = this.add.rectangle(x, -20, 20, 20, 0xff3366).setStrokeStyle(2, 0xff6a8f);
-            const enemy = this.physics.add.existing(enemyRect, false);
-            enemy.body.setVelocityY(120);
-            this.enemies.add(enemy);
-          }
-        });
-
-        // столкновения
-        this.physics.add.overlap(this.bullets, this.enemies, (b, e) => {
-          b.destroy();
-          e.destroy();
-          this.score++;
-          this.events.emit("score:change", this.score);
-        });
-
-        // счёт
-        this.scoreText = this.add.text(14, 12, "Score: 0", {
-          fontSize: "18px",
-          color: "#9fb3ff",
-        });
-      }
-
-      fire() {
-        const bulletRect = this.add.rectangle(this.player.x, this.player.y - 16, 4, 10, 0x66ccff);
-        const bullet = this.physics.add.existing(bulletRect, false);
-        bullet.body.setVelocityY(-380);
-        this.bullets.add(bullet);
-      }
-
-      update() {
-        if (this.cursors.left?.isDown) {
-          this.player.body.setVelocityX(-220);
-        } else if (this.cursors.right?.isDown) {
-          this.player.body.setVelocityX(220);
-        } else {
-          this.player.body.setVelocityX(0);
-        }
-      }
-    }
-
-    const game = new Phaser.Game({
-      type: Phaser.AUTO,
-      width: 360,
-      height: 640,
-      parent: "game",
-      backgroundColor: "#0b1020",
-      physics: { default: "arcade", arcade: { debug: false } },
-      scene: [MainScene],
-    });
-
-    // чтобы кнопка Share могла взять счёт
-    const scene = () => game.scene.getScene("main");
-    scene().events.on("score:change", (s) => {
-      scene().scoreText.setText("Score: " + s);
-      window.__score = s;
-    });
-
-    /* ====== КНОПКИ SDK ====== */
-    const signBtn = document.getElementById("sign");
+    const roleEl = document.getElementById("role");
+    const anotherBtn = document.getElementById("another");
     const shareBtn = document.getElementById("share");
 
-    signBtn.addEventListener("click", async (ev) => {
-      ev.stopPropagation();
-      signBtn.textContent = "Signing…";
-      try {
-        if (!sdk?.auth?.request) {
-          // не в Farcaster
-          signBtn.textContent = "SDK not available";
-          alert("Эта кнопка работает только внутри Farcaster (Preview / Mini App).");
-          return;
-        }
-        await sdk.auth.request();
-        const u = await sdk.user.get();
-        signBtn.textContent = u?.fid ? "Signed in" : "Not signed";
-      } catch (e) {
-        console.log(e);
-        signBtn.textContent = "Auth error";
-      }
+    function pickRandom() {
+      const r = roles[Math.floor(Math.random() * roles.length)];
+      roleEl.textContent = r;
+      return r;
+    }
+
+    // initial
+    let currentRole = pickRandom();
+
+    anotherBtn.addEventListener("click", () => {
+      currentRole = pickRandom();
     });
 
-    shareBtn.addEventListener("click", async (ev) => {
-      ev.stopPropagation();
+    shareBtn.addEventListener("click", async () => {
       shareBtn.textContent = "Opening…";
       try {
         if (!sdk?.actions?.composeCast) {
-          shareBtn.textContent = "SDK not available";
-          alert("Share тоже работает только внутри Farcaster.");
+          alert(
+            "This works only inside Farcaster (mini app / preview).\n\nText:\n" + currentRole
+          );
+          shareBtn.textContent = "Share to Farcaster";
           return;
         }
-        const score = window.__score ?? 0;
+
+        // try to get user info to personalize
+        let suffix = "";
+        try {
+          const u = await sdk.user.get();
+          if (u?.username) suffix = ` — @${u.username}`;
+          else if (u?.fid) suffix = ` — FID ${u.fid}`;
+        } catch {}
+
         await sdk.actions.composeCast({
-          text: `I scored ${score} in Neon Tap Shooter!`,
-          url: location.origin,
+          text: `Today I am: ${currentRole}${suffix}`,
+          url: location.origin
         });
-        shareBtn.textContent = "Shared";
-        setTimeout(() => (shareBtn.textContent = "Share"), 1500);
-      } catch (e) {
-        console.log(e);
-        shareBtn.textContent = "Share error";
+        shareBtn.textContent = "Shared ✅";
+        setTimeout(() => (shareBtn.textContent = "Share to Farcaster"), 1200);
+      } catch (err) {
+        console.log("share error", err);
+        shareBtn.textContent = "Error";
+        setTimeout(() => (shareBtn.textContent = "Share to Farcaster"), 1200);
       }
     });
   </script>
