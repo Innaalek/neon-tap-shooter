@@ -3,21 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FC Persona of the Day</title>
+  <title>Farcaster Persona</title>
   <style>
     :root {
       --bg: #0b1020;
       --card: rgba(12,16,28,0.65);
-      --line: rgba(131, 160, 255, 0.2);
-      --accent: #9bc7ff;
       --text: #e8eeff;
       --muted: #8f9acb;
+      --accent: #3f5cfa;
     }
     body{
       margin:0;
       background:var(--bg);
       color:var(--text);
-      font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
       min-height:100vh;
       display:flex;
       justify-content:center;
@@ -25,7 +24,7 @@
       padding:22px 14px 80px;
     }
     .app{
-      width:min(430px, 100%);
+      width:min(430px,100%);
       background:var(--card);
       border:1px solid rgba(155,199,255,0.08);
       border-radius:20px;
@@ -34,27 +33,8 @@
       position:relative;
       overflow:hidden;
     }
-    .app::before{
-      content:"";
-      position:absolute;
-      inset:-80px -10px auto auto;
-      width:220px;
-      height:220px;
-      border:1px solid rgba(129,209,255,0.25);
-      border-radius:9999px;
-      filter:drop-shadow(0 0 22px rgba(129,209,255,0.35));
-      pointer-events:none;
-    }
-    h1{
-      font-size:16px;
-      margin:0 0 4px;
-      letter-spacing:0.03em;
-    }
-    p.sub{
-      margin:0 0 14px;
-      font-size:13px;
-      color:var(--muted);
-    }
+    h1{font-size:16px;margin:0 0 4px;}
+    p.sub{margin:0 0 14px;font-size:13px;color:var(--muted);}
     .persona-box{
       background:rgba(4,6,10,0.45);
       border:1px solid rgba(155,199,255,0.05);
@@ -62,30 +42,31 @@
       padding:14px 14px 12px;
       margin-bottom:14px;
     }
-    .label{
-      font-size:11px;
-      text-transform:uppercase;
-      letter-spacing:0.08em;
+    .label{font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:5px;}
+    .persona-text{font-size:17px;line-height:1.4;}
+    .username{font-size:13px;color:var(--muted);margin-top:3px;}
+    .field{
+      margin-bottom:10px;
+      display:none;
+    }
+    .field label{
+      display:block;
+      font-size:12px;
+      margin-bottom:4px;
       color:var(--muted);
-      margin-bottom:5px;
     }
-    .persona-text{
-      font-size:17px;
-      line-height:1.4;
+    .field input{
+      width:100%;
+      border:1px solid rgba(155,199,255,0.14);
+      background:rgba(2,3,6,0.3);
+      border-radius:10px;
+      padding:7px 10px;
+      color:var(--text);
     }
-    .username{
-      font-size:13px;
-      color:var(--muted);
-      margin-top:3px;
-    }
-    .btn-row{
-      display:flex;
-      gap:8px;
-      margin-top:10px;
-    }
+    .btn-row{display:flex;gap:8px;margin-top:10px;}
     button{
       border:none;
-      background:#3f5cfa;
+      background:var(--accent);
       color:white;
       padding:9px 14px;
       border-radius:12px;
@@ -95,18 +76,13 @@
       flex:1;
     }
     button.secondary{
-      background:rgba(16,22,42,0.3);
+      background:rgba(16,22,42,0.35);
       border:1px solid rgba(155,199,255,0.14);
       color:var(--text);
       flex:0 0 auto;
-      min-width:90px;
+      min-width:95px;
     }
-    .status{
-      margin-top:10px;
-      font-size:12px;
-      color:var(--muted);
-      min-height:14px;
-    }
+    .status{margin-top:10px;font-size:12px;color:var(--muted);min-height:14px;}
   </style>
 </head>
 <body>
@@ -116,14 +92,18 @@
 
     <div class="persona-box">
       <div class="label">Today you are</div>
-      <div id="persona" class="persona-text">
-        Loading your vibe…
-      </div>
+      <div id="persona" class="persona-text">Loading…</div>
       <div id="who" class="username"></div>
     </div>
 
+    <!-- это поле видно, если sdk не дал нам юзера -->
+    <div id="nameField" class="field">
+      <label for="nameInput">Your handle (e.g. @inna)</label>
+      <input id="nameInput" type="text" placeholder="@yourname" />
+    </div>
+
     <div class="btn-row">
-      <button id="regenerate" class="secondary">New vibe</button>
+      <button id="regen" class="secondary">New vibe</button>
       <button id="share">Share</button>
     </div>
 
@@ -132,88 +112,86 @@
 
   <script type="module">
     import { sdk } from "https://esm.sh/@farcaster/miniapp-sdk";
-
-    // tell Farcaster we're ready
     try { sdk?.actions?.ready?.(); } catch {}
+
+    const VIBES = [
+      "💜 Meme Crafter",
+      "🧪 Experiment Hunter",
+      "🦫 Builder on Base",
+      "🟣 FC Storyteller",
+      "📡 Channel Explorer",
+      "🔥 Daily Caster",
+      "🎯 Signal over Noise",
+      "🤝 Collab Friendly",
+      "🧵 Thread Starter"
+    ];
 
     const personaEl = document.getElementById("persona");
     const whoEl = document.getElementById("who");
     const statusEl = document.getElementById("status");
-    const regenBtn = document.getElementById("regenerate");
+    const nameField = document.getElementById("nameField");
+    const nameInput = document.getElementById("nameInput");
+    const regenBtn = document.getElementById("regen");
     const shareBtn = document.getElementById("share");
 
-    // our small list of vibes
-    const VIBES = [
-      "💜 Meme Crafter",
-      "🧪 Experiment Hunter",
-      "🧵 Thread Starter",
-      "🦫 Builder on Base",
-      "📡 Channel Explorer",
-      "🟣 FC Storyteller",
-      "🤝 Collab Friendly",
-      "🌱 Community Nurturer",
-      "🔥 Daily Caster",
-      "🎯 Signal over Noise"
-    ];
-
     let currentUser = null;
-    let currentVibe = null;
+    let currentVibe = VIBES[0];
 
-    function pickVibe(seed = 0) {
-      // simple pseudo-random by seed (fid)
+    function pickVibe(seed = 0){
       const idx = seed ? seed % VIBES.length : Math.floor(Math.random() * VIBES.length);
       return VIBES[idx];
     }
 
-    async function init() {
-      statusEl.textContent = "Fetching your Farcaster profile…";
+    async function init(){
+      statusEl.textContent = "Trying to read Farcaster user…";
       try {
         const u = await sdk.user.get();
         currentUser = u;
-        const handle = u?.username ? `@${u.username}` : (u?.displayName || "");
-        whoEl.textContent = handle;
         currentVibe = pickVibe(u?.fid ?? 0);
         personaEl.textContent = currentVibe;
+        whoEl.textContent = u?.username ? `@${u.username}` : (u?.displayName || "");
         statusEl.textContent = "";
-      } catch (e) {
-        console.log(e);
-        personaEl.textContent = "Mini app can’t read user here.";
-        statusEl.textContent = "Open this mini app from Farcaster.";
+      } catch(e){
+        // НЕ получилось — показываем поле
+        currentUser = null;
+        currentVibe = pickVibe();
+        personaEl.textContent = currentVibe;
+        nameField.style.display = "block";
+        statusEl.textContent = "Enter your handle and share.";
       }
     }
 
     regenBtn.addEventListener("click", () => {
-      // if we have fid, rotate by +1 so оно менялось
-      if (currentUser?.fid) {
-        const fid = currentUser.fid;
-        // next vibe
-        const idx = (fid + Math.floor(Math.random() * 4) + Date.now()) % VIBES.length;
-        currentVibe = VIBES[Math.abs(idx)];
-      } else {
-        currentVibe = pickVibe();
-      }
+      currentVibe = pickVibe(Math.floor(Math.random()*9999));
       personaEl.textContent = currentVibe;
     });
 
     shareBtn.addEventListener("click", async () => {
-      const handle = currentUser?.username ? `@${currentUser.username}` : "I";
-      const text = `${handle} today is ${currentVibe || "🟣 Farcaster citizen"}.
+      // берём хэндл: либо из sdk, либо из поля
+      let handle = "";
+      if (currentUser?.username) {
+        handle = `@${currentUser.username}`;
+      } else if (nameInput.value.trim().length > 0) {
+        handle = nameInput.value.trim();
+      } else {
+        handle = "I";
+      }
 
-Try it: https://neon-tap-shooter.vercel.app`;
+      const text = `${handle} today is ${currentVibe}.`;
+
       try {
         if (!sdk?.actions?.composeCast) {
-          statusEl.textContent = "Share is only available inside Farcaster.";
+          statusEl.textContent = "Share works only inside Farcaster.";
           return;
         }
         await sdk.actions.composeCast({
           text,
-          // принудительно дёрнем новую картинку
           embeds: ["https://neon-tap-shooter.vercel.app/og.png?v=3"]
         });
         statusEl.textContent = "Cast composer opened ✅";
       } catch (e) {
         console.log(e);
-        statusEl.textContent = "Could not open cast composer.";
+        statusEl.textContent = "Could not open share window.";
       }
     });
 
