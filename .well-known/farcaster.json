@@ -1,15 +1,14 @@
 {
   "miniapp": {
-    "name": "Farcaster Persona",
-    "description": "Generate a persona card for Farcaster",
+    "name": "FC Persona",
+    "description": "Quick persona card to share in casts.",
     "iconUrl": "https://neon-tap-shooter.vercel.app/icon.png",
-    "ogImageUrl": "https://neon-tap-shooter.vercel.app/og.png",
+    "ogImageUrl": "https://neon-tap-shooter.vercel.app/og.png?v=3",
     "websiteUrl": "https://neon-tap-shooter.vercel.app",
-    "version": "1",
-
     "homeUrl": "https://neon-tap-shooter.vercel.app",
     "buttonTitle": "Open",
-    "imageUrl": "https://neon-tap-shooter.vercel.app/og.png"
+    "imageUrl": "https://neon-tap-shooter.vercel.app/og.png?v=3",
+    "version": "1.0.0"
   },
   "accountAssociation": {
     "header": "eyJmaWQiOjI5NjQyMiwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDA0MkMxNUM5NjExZmU0QjIzNWVkODc1MTRiOTAwMjVDMjUwYWIxNjUifQ",
