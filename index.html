@@ -218,10 +218,11 @@ https://neon-tap-shooter.vercel.app`;
             status.textContent = "SDK is not available here. Open from Farcaster app.";
             return;
           }
-          await sdk.actions.composeCast({
-            text,
-            embeds: ["https://neon-tap-shooter.vercel.app/og.png"]
-          });
+         await sdk.actions.composeCast({
+  text,
+  embeds: ["https://neon-tap-shooter.vercel.app/og.png?v=2"]
+});
+
           status.textContent = "Cast composer opened in Farcaster ✅";
         } catch (e) {
           console.log(e);
